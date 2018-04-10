@@ -34,10 +34,10 @@ class AD9959(QWeatherServer):
         self.initialize_hardware()
 
     def initialize_hardware(self):
+        self.freqdoubling = True
         if self.demo:
             print('Initializing in DEMO mode')
         else:
-            self.freqdoubling = True
             gpio.setmode(gpio.BCM)
             gpio.setup(25,gpio.OUT) # IOupdata pin
             gpio.setup(24,gpio.OUT) # Chip reset pin
@@ -73,7 +73,7 @@ class AD9959(QWeatherServer):
         data = [self.__regFTW]
         F_clk = 500.
         if self.freqdoubling:
-            setfreq = (F_clock-freq/2)
+            setfreq = (F_clk-freq/2)
         else:
             setfreq = F_clk-freq
         FTW = int(round(2**32*(freq/F_clk)))

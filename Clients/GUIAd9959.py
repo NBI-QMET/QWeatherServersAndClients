@@ -8,6 +8,8 @@
 from PyQt5.QtWidgets import *
 from PyQt5 import QtGui,QtCore
 import sys
+import asyncio
+import quamash
 from qweather import QWeatherClient
 
 __author__ = 'Asbjorn Arvad Jorgensen'
@@ -17,12 +19,15 @@ __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
 class AD9959Gui(QWidget):
 
-    def __init__(self):
+    def __init__(self,loop = None):
         super().__init__()
         QWeatherStationIP = "tcp://172.24.19.74:5559"
         name = 'AD9959GUI'
-
-        self.client = QWeatherClient(QWeatherStationIP,name=name)
+        if loop is None:
+            self.loop = asyncio.get_event_loop()
+        else:
+            self.loop = loop
+        self.client = QWeatherClient(QWeatherStationIP,name=name,loop=self.loop)
         try:
             self.server = self.client.AD9959
         except Exception as e:
@@ -32,6 +37,7 @@ class AD9959Gui(QWidget):
 
         self.initialize()
         self.restoreGUI()
+        self.loop.create_task(self.client.run())
 
     def initialize(self):
         titlelabel = QLabel(self.server.name)
@@ -236,7 +242,16 @@ class AD9959Gui(QWidget):
             settings.setValue('channel{:d}'.format(i+1),self.channeldata[i][:3])
 
         settings.sync()
+        self.loop.stop()
 
+
+async def process_events(qapp):
+    while True:
+        await asyncio.sleep(0)
+        qapp.processEvents()
+#        print(qapp.allWidgets())
+#        print(len(qapp.allWidgets()))
+#        qapp.connect.lastWindowClosed(lambda: qapp.quit())
 
 def icon():
     iconstring = ["20 20 3 1","   c #FFFFFF",".  c #000000","+  c #FDFDFD",
@@ -248,7 +263,17 @@ def icon():
 if __name__=="__main__":
     a = QApplication(sys.argv)
     a.setWindowIcon(QtGui.QIcon(QtGui.QPixmap(icon())))
-    w = AD9959Gui()
-    sys.exit(a.exec_())
+    a.lastWindowClosed.connect(lambda :print('lol'))
+    loop = asyncio.get_event_loop()
+    w = AD9959Gui(loop)
+    #loop.create_task(process_events(a))
+    #loop.run_forever()
+#    try:
+    loop.run_until_complete(process_events(a))
+  #  finally:
+   #     loop.close()
+
+    #loop.call_soon(process_events(a),loop)
+
 
 
