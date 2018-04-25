@@ -5,8 +5,8 @@
 
 
 from qweather import QWeatherServer, QMethod
-import spidev
-import RPi.GPIO as gpio
+#import spidev
+#import RPi.GPIO as gpio
 
 __author__ = 'Asbjorn Arvad Jorgensen'
 __version__ = '1.0'
@@ -22,12 +22,13 @@ class AD9959(QWeatherServer):
     __regACR = 0x06 #address (Amplitude control register)
 
 
-    def __init__(self):
-        self.QWeatherStationIP = "tcp://172.24.19.74:5559"
-        self.servername = 'AD9959'
+    def __init__(self,dds):
+        self.QWeatherStationIP = "tcp://localhost:5559"
+        self.servername = 'ACEDDS{:d}'.format(dds)
         self.verbose = False
         self.debug = False
         self.demo = True
+        self.dds = dds
         self.initialize_sockets()
         print('*'*50)
         print('Server Online')
@@ -42,7 +43,7 @@ class AD9959(QWeatherServer):
             gpio.setup(25,gpio.OUT) # IOupdata pin
             gpio.setup(24,gpio.OUT) # Chip reset pin
             self.spi = spidev.SpiDev()
-            self.spi.open(0,dds)
+            self.spi.open(0,self.dds)
             self.chipReset()
         
     def setChannel(self,ch):
@@ -144,5 +145,21 @@ class AD9959(QWeatherServer):
             return self.spi.readbytes(bytelength)
 
 if __name__ == "__main__":
-    server = AD9959()
-    server.run()
+    from multiprocessing import Process
+
+    serverA = AD9959(0)
+#    serverB = AD9959(1)
+
+    pA = Process(target=serverA.run())
+    pB = Process(target=serverB.run())
+    pA.start()
+    pB.start()
+    try:
+        while True:
+            pass #'Run run run little servers'
+    except KeyboardInterrupt:
+        print('Shutting down servers')
+        pA.terminate()
+        pB.terminate()
+        print('Servers shut down')
+
