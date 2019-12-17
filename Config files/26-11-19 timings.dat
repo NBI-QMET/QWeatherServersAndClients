@@ -1,0 +1,7 @@
+Time resolution = ms
+(0) User2	0.0	0.0	0.0	0.0
+(1) Blue MOT	600.0	0.0	0.0	0.0
+(3) ImagingAOM	600.0	600.3	650.0	650.3
+(4) PulseTrigger	0.0	0.0	0.0	0.0
+(5) CamTrigger	600.0	601.0	650.0	651.0
+(6) Red MOT	0.0	0.0	0.0	0.0

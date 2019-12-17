@@ -1,0 +1,7 @@
+Time resolution = ms
+BlueMOT	600.0	0.0	0.0	0.0
+CamTrigger	600.0	601.0	650.0	651.0
+ImagingAOM	600.0	600.3	650.0	650.3
+PulseTrigger	0.0	0.0	0.0	0.0
+User2	0.0	0.0	0.0	0.0
+Zeeman	600.0	601.0	650.0	0.0

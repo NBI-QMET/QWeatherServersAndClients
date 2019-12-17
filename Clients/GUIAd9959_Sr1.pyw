@@ -20,15 +20,15 @@ class AD9959Gui(QWidget):
 
     def __init__(self,loop = None):
         super().__init__()
-        QWeatherStationIP = "tcp://172.24.22.3:5559"
-        name = 'AD9959GUI2'
+        QWeatherStationIP = "tcp://10.90.61.13:5559"
+        name = 'AD9959GUI_SR1'
         if loop is None:
             self.loop = asyncio.get_event_loop()
         else:
             self.loop = loop
         self.client = QWeatherClient(QWeatherStationIP,name=name,loop=self.loop)
         try:
-            self.server = self.client.ACEDDSA
+            self.server = self.client.SR1DDS
         except Exception as e:
             print(e,'could not find server')
         self.setWindowTitle('AD9959')
@@ -39,7 +39,7 @@ class AD9959Gui(QWidget):
         self.loop.create_task(self.client.run())
 
     def initialize(self):
-        titlelabel = QLabel(self.server.name)
+        titlelabel = QLabel('SR 1')
         titlelabel.setFont(QtGui.QFont('Helvetica',20,75))
         channelpattern = self.make_channel_panel()
         frequencyPanel = self.make_frequency_panel()
@@ -58,7 +58,7 @@ class AD9959Gui(QWidget):
 
     def make_channel_panel(self):
         panel = QFrame()
-        buttonnames = ['0','1','2','3']
+        buttonnames = ['NICEOHMS [0]','EOM [1]','RAM [2]','free [3]']
         buttonlist = [QRadioButton() for alabel in buttonnames]
         labellist = [QLabel(alabel) for alabel in buttonnames]
         self.channeldata = [[0,0,0,None,None,None] for abutton in buttonlist ]
@@ -99,7 +99,7 @@ class AD9959Gui(QWidget):
     def make_frequency_panel(self):
         panel = QFrame()
         freqbox = QDoubleSpinBox()
-        freqbox.setRange(640,770)
+        freqbox.setRange(1,1000)
         freqbox.setSingleStep(1)
         freqbox.setDecimals(6)
         freqbox.setSuffix(' MHz')
@@ -117,7 +117,6 @@ class AD9959Gui(QWidget):
             achan[3] = freqbox
 
         def freqedited(freq):
-            self.currentchannel = -1
             if self.currentchannel == -1:
                 for achan in self.channeldata:
                     achan[0] = freq

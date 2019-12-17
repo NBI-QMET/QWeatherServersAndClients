@@ -1,0 +1,43 @@
+{
+	"Oscilloscopes":{
+		"RSOSC1":
+				{
+			"adress" : "10.90.61.203",
+			"type": "HMO 3004"},
+		"RSOSC2":
+				{
+			"adress" : "10.90.61.206",
+			"type": "HMO 3004"},
+		"RSOSC3":
+		     	{
+			"adress" : "10.90.61.226",
+			"type": "RTB 2004"},
+		"RSOSC4":
+		     	{
+			"adress" : "10.90.61.213",
+			"type": "RTB 2004"},
+
+		"RSAxel":
+		{
+			"adress" : "10.90.61.222",
+			"type": "RTO 1044"}
+	},
+	"Multimeters":{
+		"RSMM1":
+				{
+			"adress" : "10.90.61.204",
+			"type": "HMC 8012"},
+		"RSMM2":
+				{
+			"adress" : "10.90.61.205",
+			"type": "HMC 8012"}
+	},
+	"PCs":{
+		"ESAPC":"10.90.61.13"
+	},
+	"Others":{
+		"IBOOT SR1 power switch":"10.90.61.210"
+	}
+}
+
+

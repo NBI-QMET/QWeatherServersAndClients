@@ -76,6 +76,17 @@ class BrokerGui(QWidget):
             clienttext = ' ---- No Clients Connected ----'
         self.clientlist.setText(clienttext)
 
+    def closeEvent(self, event):
+        reply = QMessageBox.question(self, 'Message',
+            "Are you sure you want to quit?", QMessageBox.Yes, QMessageBox.No)
+
+        if reply == QMessageBox.Yes:
+            event.accept()
+            self.broker.close()
+            self.loop.stop()
+        else:
+            event.ignore()
+
 
 async def process_events(qapp):
     while True:
