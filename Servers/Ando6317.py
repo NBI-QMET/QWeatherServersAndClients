@@ -25,9 +25,7 @@ class Server(QWeatherServer):
         print('*'*50)
         print('Server Online')
         self.initialize_hardware()
-        print('polling')
-        print(self.GPIB_read_srq())
-        print('Polled')
+
 
     def initialize_hardware(self):
         try:
@@ -39,10 +37,7 @@ class Server(QWeatherServer):
         self.GPIB.write(("++addr " + str(self.GPIB_addr) + "\n").encode())  # Set GPIB address.
         self.GPIB.write(b"++auto 0\n")                       # Disable read-after-write.
         self.GPIB.write(b"++eoi 1\n")      
-        self.GPIB.write("SRMSK0\n".encode())
-        self.GPIB.write("SRQ1\n".encode())
-#        self.GPIB.write(b"++status 48\n")    
-        print(self.GPIB_ask('SRQ?\n',16))   
+
 
         GPIB_id = self.GPIB_ask("*IDN?\n", 16)
         print(GPIB_id)
@@ -106,15 +101,7 @@ class Server(QWeatherServer):
             for apoint in data.strip().split(',')[1:]:
                 wavelength.append(float(apoint))
             print(len(wavelength))
-            self.GPIB.write("++read eoi\n".encode())
-            answer = self.GPIB.readline().decode()
-            print(answer)
-            fname = 'Z:/SPOC/Mikroringe/Chalmers Ringe/Wafer242-singlering-D500/20191213/wafer242-singlering-D500-Gap2-W1540p81-P27p5dBm-OSA-sweep3'
-            with open(fname + '.txt','w') as f:
-                print('Saving data...')
-                f.write('Wavelength [nm] \t Amplitude [dBm]\n')
-                for wav,amp in zip(wavelength,amplitudes):
-                    f.write(str(wav) + '\t' + str(amp) + '\n')
+        
         return [wavelength,amplitudes]
 
 

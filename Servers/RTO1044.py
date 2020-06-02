@@ -15,7 +15,6 @@ __version__ = '1.0'
 __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
 class Server(QWeatherServer):
-
     def __init__(self,servername,serveradress):
         self.QWeatherStationIP = "tcp://10.90.61.13:5559"
         self.servername = servername+ 'OSC'
@@ -30,6 +29,14 @@ class Server(QWeatherServer):
         self.save_scans(10,'Z:/MicrowaveReference/data/BeatnoteMeasurements/190708/22MHz 200Msps neg30dB unlock noAOM/',[1,2])
 
     def save_scans(self,nscans,path,channellist):
+        """Take a bunch of single_measurements and save them to a path One file for each scan Filename is automatically appended with numbers.
+
+        :param nscans: Number of scans to save
+        :type nscans: int
+        :param path: savepath
+        :type path: str
+        :param channellist: list of channels to take data from
+        :type channellist: list,int"""
         channels = channellist
         for j in range(nscans):
 
@@ -45,6 +52,7 @@ class Server(QWeatherServer):
             gc.collect()
 
     def initialize_hardware(self):
+        """Open the connection to the hardware using a visa connection"""
         rm = visa.ResourceManager()
         self.hardware = rm.open_resource(self.address)
         print('Oscilloscope server running Made contact with:')
@@ -58,6 +66,12 @@ class Server(QWeatherServer):
 
 
     def get_channel_data(self,channels):
+        """Get data from channels
+
+        :param channels: List of channels, or single channel to get data from
+        :type channels: list, int
+        :return: List of data in the form [tlist, datalist ,header]
+        :rtype: list"""
         if not isinstance(channels,list):
             head = self.hardware.query('CHAN{:d}:DATA:HEAD?'.format(channels)).split(',')
             data = self.hardware.query_binary_values('CHAN{:d}:DATA?'.format(channels),datatype='d',is_big_endian=True)
@@ -103,6 +117,12 @@ class Server(QWeatherServer):
 
     @QMethod
     def single_measurement(self,channels):
+        """Do a single measurement. Initialize the measurement and RUN oscilloscope when done
+
+        :param channels: List of channels, or single channel to take data from
+        :type channels: list,int
+        :return: A list of lists containing [timearray,data,[number of samples,samplerate]]
+        :rtype: list"""
         self.hardware.write('SING')
         time.sleep(2)
 
@@ -116,6 +136,15 @@ class Server(QWeatherServer):
 
     @QMethod 
     def repeat_measurements(self,channels,Nmeas):
+        """Repeat measurements. Initialize the measurement and RUN oscilloscope when done. Repeat N times. Each iteration is a new trigger on the oscilloscope.
+
+
+        :param channels: List of channels, or single channel to take data from
+        :type channels: list,int
+        :param Nmeas: number of times to repeat taking data
+        :type Nmeas: int
+        :return: A list of lists of lists containing [timearray,data,[number of samples,samplerate]]xNmeans
+        :rtype: list"""
         data = []
         #self.hardware.write('STOP')
         for i in range(Nmeas):

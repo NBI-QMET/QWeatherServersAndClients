@@ -12,7 +12,7 @@ import numpy as np
 from ctypes import c_int, byref
 
 __author__ = 'Asbjorn Arvad Jorgensen'
-__version__ = '0.1'
+__version__ = '0.2'
 __credits__ = 'Mikkel Tang'
 __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
@@ -80,14 +80,17 @@ class StrontiumBrain(QWeatherServer):
         self.channelsAO = defaultdict(Channel)
         self.channelsDI = defaultdict(Channel)
         self.channelsDO = defaultdict(Channel)
-
+        
         self.clock = "/Dev1/Ctr0InternalOutput"#"/Dev1/100kHzTimebase"#
-        self.clockrate = int(10e6)#int(100e3)#int(1e6)#int(10e6)
-        self.maxtime = 1000e-3#101000e-6 #longest time in seconds
+        # The (DO) clockrate has been lowered from 10 to 1 MHz to accomodate AO signals
+        self.clockrate = int(1e6)
+        self.aoclock = "OnboardClock"
+        self.aoclockrate = int(1e6)
+        self.maxtime = 1000e-3 #longest time in seconds
         if self.demo:
             print('Initializing in DEMO mode')
 
-                            #name:      (line addresse, inv polarity(0 means on, 1 means off))
+                            #name:      (line address, inv polarity(0 means on, 1 means off))
         self.channellistDO = {'(0) User2':('Dev1/port0/line0', False),
                             '(3) ImagingAOM':('Dev1/port0/line3',False),
                             '(1) Blue MOT':('Dev1/port0/line1',False),
@@ -96,7 +99,7 @@ class StrontiumBrain(QWeatherServer):
                             '(6) Red MOT':('Dev1/port0/line6',False)}
         self.channellistAI = {}#'AI0':'Dev1/ai0'}
 
-        self.channellistAO = {}#'AO1':'Dev1/ao1'}
+        self.channellistAO = {'AO1':'Dev1/ao1'}
 
 
     @QMethod
@@ -122,13 +125,13 @@ class StrontiumBrain(QWeatherServer):
 
     @QMethod
     def clearAnalogOutput(self):
-        '''Clears the digital output sequence'''
+        '''Clears the analog output sequence'''
         self.channelsAO = defaultdict(Channel)
 
 
 
     @QMethod
-    def armSequence(self,user_Max_Time = None):
+    def armSequence(self,AOdata,user_Max_Time = None):
         '''arms sequence'''
         if user_Max_Time is None:
             user_Max_Time = self.maxtime
@@ -187,29 +190,32 @@ class StrontiumBrain(QWeatherServer):
         #############################################
         if len(self.channelsAO.items()) is not 0:
             self.AOtask = CallBackTask()
-            self.compileAnalogOutput(user_Max_Time)
-
-            for aname,achannel in self.channelsAO.items():
-                minvolt = min(achannel.dataArray)
-                maxvolt = max(achannel.dataArray)
-                self.AOtask.CreateAOVoltageChan(self.channellistAO[aname],#Terminal name
-                                                aname, #channel name
-                                                -5, #Minimum value
-                                                5, #Maximum value
-                                                DAQmx_Val_Volts, #Units
-                                                None) #Custom scale name
-
-            self.AOtask.CfgSampClkTiming('/Dev1/Ctr0InternalOutput',#Clock to use
-                                        float64(self.clockrate), #clock frequency of said clock
+            
+            analogChannelNames = list(self.channelsAO.keys()) + list(self.channelsAI.keys()) #list of names of analog lines used
+            lineadress = ','.join([self.channellistAO[aname] for aname in analogChannelNames])
+            linename = ','.join(analogChannelNames)
+            
+            self.AOtask.CreateAOVoltageChan(lineadress, # Lines, only specify those needed
+                                        linename, # Name of lines, identical to the dictionary names/keys
+                                        -5, #Minimum value
+                                        5, #Maximum value
+                                        DAQmx_Val_Volts, #Units
+                                        None) #Custom scale name
+            
+            self.AOtask.CfgSampClkTiming(self.aoclock,#'/Dev1/Ctr0InternalOutput',#Clock to use
+                                        float64(self.aoclockrate), #AO: Max 1 MHz works
                                         DAQmx_Val_Rising, #Sample/generate on rising or falling edge
                                         DAQmx_Val_FiniteSamps, #Generate continous samples or finite samples
-                                        int(self.clockrate*user_Max_Time)); #How many samples to generate/aquire if in Finite mode
-
+                                        int(self.aoclockrate*user_Max_Time)); #How many samples to generate/aquire if in Finite mode
+            
             writtenSampsAO = c_int()
-            data = np.array([],dtype='uint8')
+            data = np.array([],dtype='double')
             for aname,achan in self.channelsAO.items():
+                if len(AOdata) > 0:
+                    achan.dataArray = np.array(AOdata,dtype='float64') # Get data from AO GUI
                 data = np.append(data,achan.dataArray)
                 lenAO = len(achan.dataArray)
+                
             self.AOtask.WriteAnalogF64(lenAO, #Length of data to write
                                           False, #Autostart
                                           5.0, #Timeout for writing, in seconds
@@ -218,7 +224,6 @@ class StrontiumBrain(QWeatherServer):
                                           writtenSampsAO, #Samples written
                                           None) #reserved
             self.AOtask.TaskControl(DAQmx_Val_Task_Commit)
-
 
         #############################################
         #                                           #
@@ -260,22 +265,27 @@ class StrontiumBrain(QWeatherServer):
     @QMethod
     def startSequence(self,run_only_once = False):
         '''Starts the sequence'''
-        self.DOtask.Begin_Task()
+        if len(self.channelsDO.items()) is not 0:
+            self.DOtask.Begin_Task()
         #self.AItask.Begin_Task()
-        #self.AOtask.Begin_Task()
+        
+        if len(self.channelsAO.items()) is not 0:
+            self.AOtask.Begin_Task()
         if run_only_once:
             self.DOtask.run=False
             #self.AItask.run=False
-            #self.AOtask.run=False
-        self.COtask.StartTask() # Starts the clock the lat
+            self.AOtask.run=False
+        self.COtask.StartTask() # Starts the clock the last
 
     @QMethod
     def stopSequence(self):
         '''Ends the sequence after the next repetition'''
         
-        self.DOtask.End_Task()
+        if len(self.channelsDO.items()) is not 0:
+            self.DOtask.End_Task()
         #self.AItask.End_Task()
-        #self.AOtask.End_Task()
+        if len(self.channelsAO.items()) is not 0:
+            self.AOtask.End_Task()
         self.COtask.StopTask()
 
     @QMethod
@@ -291,7 +301,6 @@ class StrontiumBrain(QWeatherServer):
     @QMethod
     def getChannelList(self):
         return [list(self.channellistDO.keys()),list(self.channellistAI.keys()), list(self.channellistAO.keys())] 
-
 
     def compileDigitalOutput(self,max_time):
         for aname,achannel in self.channelsDO.items():
@@ -314,23 +323,6 @@ class StrontiumBrain(QWeatherServer):
                 except ValueError as e:
                     print(e,nStart,nStop)
             achannel.dataArray = np.array(sequencedata,dtype='uint8')
-
-    def compileAnalogOutput(self,max_time):
-        for aname,achannel in self.channelsAO.items():
-            timings = achannel.timings
-            timings.sort(key=lambda x: x[0]) # Sort timings according to tstart
-            sequencedata = np.zeros(int(self.clockrate*max_time),dtype='float64') #Use initial value, default is 0 (low)
-            for tStart,tStop,volt in timings:
-                nStart = int(self.clockrate*tStart+0.5)
-                nStop = int(self.clockrate*tStop+0.5)
-                sequencedata[nStart:nStop] = np.ones(nStop-nStart,dtype='float64')*volt
-            achannel.dataArray = np.array(sequencedata,dtype='float64')
-
-
-
-
-
-
 
 if __name__ == "__main__":
     server = StrontiumBrain()

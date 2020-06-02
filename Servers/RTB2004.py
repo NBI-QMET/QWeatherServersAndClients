@@ -26,6 +26,7 @@ class Server(QWeatherServer):
         
 
     def initialize_hardware(self):
+        """Open the connection to the hardware using visa"""
         rm = visa.ResourceManager()
         self.hardware = rm.open_resource(self.address)
         print('Oscilloscope server running Made contact with:')
@@ -37,6 +38,12 @@ class Server(QWeatherServer):
 
 
     def get_channel_data(self,channels):
+        """Get data from channels
+
+        :param channels: List of channels, or single channel to get data from
+        :type channels: list, int
+        :return: List of data in the form [tlist, datalist ,header]
+        :rtype: list"""
         if not isinstance(channels,list):
             self.hardware.write('CHAN{:d}:DATA:POIN MAX'.format(channels))
             head = self.hardware.query('CHAN{:d}:DATA:HEAD?'.format(channels)).split(',')
@@ -52,6 +59,12 @@ class Server(QWeatherServer):
         return [tlist,data,head]
 
     def get_ref_channel_data(self,channels):
+        """Get data from reference channels
+
+        :param channels: List of channels, or single channel to get data from
+        :type channels: list, int
+        :return: List of data in the form [tlist, datalist ,header]
+        :rtype: list"""
         if not isinstance(channels,list):
             head = self.hardware.query('REFC{:d}:DATA:HEAD?'.format(channels)).split(',')
             data = self.hardware.query_binary_values('REFC{:d}:DATA?'.format(channels),datatype='f',is_big_endian=True)
@@ -66,6 +79,12 @@ class Server(QWeatherServer):
         return [tlist,data,head]
 
     def get_time_data(self,channels):
+        """Get the timearray corresponding to the current measurement
+
+        :param channels: List of channels, or single channel to get data from
+        :type channels: list, int
+        :return: timearray
+        :rtype: list"""
         if not isinstance(channels,list):
             self.hardware.write('CHAN{:d}:DATA:POIN MAX'.format(channels))
             head = self.hardware.query('CHAN{:d}:DATA:HEAD?'.format(channels)).split(',')
@@ -78,6 +97,19 @@ class Server(QWeatherServer):
 
     @QMethod
     def single_measurement(self,channels,rerun=False,ref=False):
+        """
+        **QMethod**
+
+        Does a single measurement of the data
+        
+        Args:
+            channels(list,int): List of channels to measure
+            rerun (bool): Default False, If True, set Oscilloscope running after data taken
+            ref (bool): Default False, if True, get reference channel data
+        Returns:
+            A list of data in the form [timelist,data]. If data from multiple channels, then data is a list of lists
+
+        """
         if ref:
             tlist,data,head = self.get_ref_channel_data(channels)
         else:
@@ -92,6 +124,17 @@ class Server(QWeatherServer):
 
     @QMethod
     def get_timedata(self,channels,rerun=False):
+        """
+        **QMethod**
+        Gets the timearray corresponding to the current data. Calls :py:meth:`get_time_data`.
+        
+        Args:
+            channels(list,int): List of channels to measure
+            rerun (bool,optional): Set Oscilloscope running after data taken, Defaults to False
+        Returns:
+            A timearray
+
+        """
         tlist = self.get_time_data(channels)
         if rerun:
             self.hardware.write('RUN')
@@ -101,6 +144,17 @@ class Server(QWeatherServer):
 
     @QMethod
     def get_data(self,channels,rerun=False):
+        """
+        **QMethod**
+        Gets the data from a channel, or list of channels Calls :py:meth:`get_channel_data`.
+        
+        Args:
+            channels(list,int): List of channels to measure
+            rerun (bool,optional): Set Oscilloscope running after data taken, Defaults to False
+        Returns:
+            A list of data in the form [timelist,data]. If data from multiple channels, then data is a list of lists
+
+        """
         trash,data,trash2 = self.get_channel_data(channels)
         if rerun:
             self.hardware.write('RUN')
@@ -111,6 +165,17 @@ class Server(QWeatherServer):
 
     @QMethod 
     def repeat_measurements(self,channels,Nmeas):
+        """
+        **QMethod**
+        Initialize the measurement and RUN oscilloscope when done. Repeat N times. Each iteration is a new trigger on the oscilloscope.
+
+        Args:
+            channels(list,int): List of channels to measure
+            Nmeans (int): Number of times to repeat taking data
+        Returns:
+            A list of lists of lists containing [timearray,data,[number of samples,samplerate]]xNmeans
+
+        """
         data = []
         #self.hardware.write('STOP')
         for i in range(Nmeas):
@@ -149,25 +214,103 @@ class Server(QWeatherServer):
 
     @QMethod
     def measure_peakpeak(self,channel,place,stat=False,stattime = 3):
+        """
+        **QMethod**
+        Measure peakpeak value of signal. Calls :py:meth:`_measure_value`.
+
+        Args:
+            channel(int): Channel to measure
+            place (int): measurement place on the oscilloscope
+            stat (bool,optional): Do statistics, defaults to False
+            stattime (int,optional): How long to do statistics over,  defaults to 3
+
+        Returns:
+            Peak Peak value Float
+        """
         return self._measure_value(channel,place,'PEAK',stat,stattime)
     
     @QMethod
     def measure_mean(self,channel,place,stat=False,stattime = 3):
+        """
+        **QMethod**
+        Measure mean value of signal. Calls :py:meth:`_measure_value`.
+
+        Args:
+            channel(int): Channel to measure
+            place (int): measurement place on the oscilloscope
+            stat (bool,optional): Do statistics, defaults to False
+            stattime (int,optional): How long to do statistics over, defaults to 3
+
+        Returns:
+            mean value Float
+        """
         return self._measure_value(channel,place,'MEAN',stat,stattime)
         
     @QMethod
     def measure_std(self,channel,place,stat=False,stattime = 3):
+        """
+        **QMethod**
+        Measure std value of signal. Calls :py:meth:`_measure_value`.
+
+        Args:
+            channel(int): Channel to measure
+            place (int): measurement place on the oscilloscope
+            stat (bool,optional): Do statistics, defaults to False
+            stattime (int,optional): How long to do statistics over, defaults to 3
+
+        Returns:
+            std value Float
+        """
         return self._measure_value(channel,place,'STDD',stat,stattime)
 
     @QMethod
     def measure_minval(self,channel,place,stat=False,stattime = 3):
+        """
+        **QMethod**
+        Measure min value of signal. Calls :py:meth:`_measure_value`.
+
+        Args:
+            channel(int): Channel to measure
+            place (int): measurement place on the oscilloscope
+            stat (bool,optional): Do statistics, defaults to False
+            stattime (int,optional): How long to do statistics over, defaults to 3
+
+        Returns:
+            min value Float
+        """
         return self._measure_value(channel,place,'LPE',stat,stattime)
 
     @QMethod
     def measure_maxval(self,channel,place,stat=False,stattime = 3):
+        """
+        **QMethod**
+        Measure max value of signal. Calls :py:meth:`_measure_value`.
+
+        Args:
+            channel(int): Channel to measure
+            place (int): measurement place on the oscilloscope
+            stat (bool,optional): Do statistics, defaults to False
+            stattime (int,optional): How long to do statistics over, defaults to 3
+
+        Returns:
+            Max value Float
+        """
         return self._measure_value(channel,place,'UPE',stat,stattime)
 
     def _measure_value(self,channel,place,measurement,stat,stattime):
+        """
+        Measure some value of the signal
+
+        Args:
+            channel(int): Channel to measure
+            place (int): measurement place on the oscilloscope
+            measurement(str): PEAK-peak peak; MEAN-mean; STDD-std; LPE-min; UPE-max
+            stat (bool): Do statistics
+            stattime (int): How long to do statistics over
+
+        Returns:
+            measurement value Float
+        """
         if not isinstance(channel,list):
             self.hardware.write('MEAS{:d}:SOUR CH{:d}'.format(place,channel))
             if stat:

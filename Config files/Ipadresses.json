@@ -32,6 +32,25 @@
 			"adress" : "10.90.61.205",
 			"type": "HMC 8012"}
 	},
+	"DDS":{
+		"RigolDDS2":
+				{
+			"adress" : "10.90.61.212",
+			"type": "Rigol DG1022"},
+		"RigolDDS6":
+				{
+			"adress" : "10.90.61.252",
+			"type": "Rigol DG1022"},
+		"RigolDDS7":
+				{
+			"adress" : "10.90.61.251",
+			"type": "Rigol DG1022"}
+	},
+	"ESA":{
+		"RSESA1":{
+			"address" : "somethign"
+		}
+	},
 	"PCs":{
 		"ESAPC":"10.90.61.13"
 	},

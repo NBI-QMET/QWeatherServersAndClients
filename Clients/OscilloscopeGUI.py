@@ -141,7 +141,7 @@ class OscGui(QWidget):
                         tmp = await osc.single_measurement(channels[achannel])
                         logging.info('got data from channel {:d}'.format(channels[achannel]))
                         data.append(tmp)
-                    tmp = await osc.single_measurement(channels[-1],rerun=True)
+                    tmp = await osc.single_measurement(channels[-1])#,rerun=True)
                     data.append(tmp)
                     logging.info('got data from channel {:d}, rerunning oscilloscope'.format(channels[-1]))
                     newdata = [data[0][0],[adat[1] for adat in data]]

@@ -22,6 +22,7 @@ class logging_thread(threading.Thread):
 
     def stopped(self):
         return self._stop.isSet()
+        
 class Server(QWeatherServer):
 
     def __init__(self):

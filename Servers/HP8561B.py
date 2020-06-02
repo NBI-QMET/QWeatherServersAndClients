@@ -24,7 +24,7 @@ class Server(QWeatherServer):
         print('*'*50)
         print('Server Online')
         self.initialize_hardware()
-        self.saveSpectrum('Z:/Sr1/Repumpers/Locking/Beats/20191212 - Clock laser')
+        self.saveSpectrum('Z:/Sr1/Repumpers/Locking/Beats/20200211 - 707 lock with knobs')
 
     def initialize_hardware(self):
         self.GPIB = serial.Serial( 'COM5', 9600, timeout=10) # Initialise the serial port.

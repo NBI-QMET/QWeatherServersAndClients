@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Gui for the NI6259 Board used to control digital (and analog) IO in Sr 1 experiment
-
+"""GUI for the NI6259 Board used to control digital (and analog) IO in Sr 1 experiment
+   Only works if the NI6259 server is running
 """
 
 from PyQt5.QtWidgets import *
@@ -13,12 +13,17 @@ from qweather import QWeatherClient
 import time
 import numpy as np
 import pyqtgraph as pg
+from AnalogOutputConfigPopup import aowindow
 
 __author__ = 'Asbjorn Arvad Jorgensen'
-__version__ = '0.9'
+__version__ = '1.0'
+__credits__ = 'Mikkel Tang'
 __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
+
 class mySpinbox(QDoubleSpinBox):
+    
+    
     def __init__(self):
         super().__init__()
         self.setButtonSymbols(QAbstractSpinBox.NoButtons)
@@ -26,12 +31,14 @@ class mySpinbox(QDoubleSpinBox):
         self.setMaximum(1000000)
         self.setLocale(QtCore.QLocale(QtCore.QLocale.English,QtCore.QLocale.UnitedStates)) #set locale to us, so decimal point means decimal point
 
+
     def textFromValue(self,value):
         return '{:.10n}'.format(value)
 
 
 class SrBrainGui(QWidget):
 
+    
     def __init__(self,loop = None):
         super().__init__()
         QWeatherStationIP = "tcp://10.90.61.13:5559"
@@ -72,8 +79,9 @@ class SrBrainGui(QWidget):
             layout.addWidget(QLabel('StrontiumBrain not connected...'))
             panel.setLayout(layout)
         else:
-            self.channelsDO, channelsAI, channelsAO = self.Srbrain.getChannelList()
+            self.channelsDO, channelsAI, self.channelsAO = self.Srbrain.getChannelList()
             self.channelsDO = sorted(self.channelsDO)
+            self.channelsAO = sorted(self.channelsAO)
             timinglayout = QtGui.QGridLayout()
             timinglayout.addWidget(QLabel('On/Off'),0,0)
             timinglayout.addWidget(QLabel('Name'),0,1)
@@ -99,7 +107,12 @@ class SrBrainGui(QWidget):
             timinglayout.addWidget(save,1,2)
             timinglayout.addWidget(load,1,3)
             timinglayout.addWidget(helpbutton,1,4)
-            self.timingboxes = []
+            self.timingboxesDO = []
+            self.timingboxesAO = []
+            self.tAO = []
+            self.UAO = []
+            self.tUnit = 1e3 # Multiply by 1e3 to view 0.001 s as 1 ms, etc...
+            self.aopanels = []
             self.channelOnDict = {}
             for name in self.channelsDO:
                 startOn = QCheckBox()
@@ -111,18 +124,39 @@ class SrBrainGui(QWidget):
 
                 startOn.stateChanged.connect(lambda state, aname=name:self.onoff_changed(state,aname))
 
-                self.timingboxes.append([])
+                self.timingboxesDO.append([])
                 for i in range(3):
                     spinBox =mySpinbox()
-                    self.timingboxes[-1].append(spinBox)
-                    timinglayout.addWidget(self.timingboxes[-1][i],currentrow,i+2)
+                    self.timingboxesDO[-1].append(spinBox)
+                    timinglayout.addWidget(self.timingboxesDO[-1][i],currentrow,i+2)
+            for name in self.channelsAO:
+                startOn = QCheckBox()
+                label = QLabel(name)
+                currentrow = timinglayout.rowCount()
+                timinglayout.addWidget(startOn,currentrow,0)
+                timinglayout.addWidget(label,currentrow,1)
+                self.channelOnDict[name] = False
+
+                startOn.stateChanged.connect(lambda state, aname=name:self.onoff_changed(state,aname))
+                
+                # Add button to configure AO signal and open popup. Unlike the DO boxes this is just informative and the info is edited with AO popup.
+                self.aoconfig = QPushButton('Configure')
+                timinglayout.addWidget(self.aoconfig,currentrow,2)
+                self.aoconfig.pressed.connect(lambda: SrBrainGui.make_aowindow(self))
+                
+                # Add box to show the AO signal cycle time
+                self.timingboxesAO.append([])
+                spinBox =mySpinbox()
+                self.timingboxesAO[-1].append(spinBox)
+                timinglayout.addWidget(self.timingboxesAO[-1][0],currentrow,4)
+                
             self.timeresolution.currentIndexChanged.connect(self.change_timeresolution)
-            add.pressed.connect(lambda: self.modify_timings(self.timingboxes,timinglayout))
-            subtract.pressed.connect(lambda: self.modify_timings(self.timingboxes,timinglayout,False))
+            add.pressed.connect(lambda: self.modify_timings(self.timingboxesDO,timinglayout)) # Add switch time for DO
+            subtract.pressed.connect(lambda: self.modify_timings(self.timingboxesDO,timinglayout,False)) # Remove switch time for DO
             save.pressed.connect(self.timings_save)
             load.pressed.connect(lambda: self.timings_load(timinglayout))
             timingpanel.setLayout(timinglayout)
-
+            
             self.plotfig = pg.PlotWidget()
             self.plotfig.setYRange(0,len(self.channelsDO))
             panel.addWidget(timingpanel)
@@ -137,20 +171,26 @@ class SrBrainGui(QWidget):
         elif timeres == 1e-3:
             modifier = 1e-3
 
-        for arow in self.timingboxes:
+        for arow in self.timingboxesDO:
             for abox in arow:
                 abox.setValue(abox.value()*modifier)
+        
+        for arow in self.timingboxesAO:
+            for abox in arow:
+                abox.setValue(abox.value()*modifier)
+
 
     def timings_save(self):
         savefilename, _ = QtGui.QFileDialog.getSaveFileName(None,'Save file','Z:\Dataprogrammer\Qweather\Config files\Timings.dat','Timing files (*.dat)')
         if savefilename is not '':
             with open(savefilename,'w') as f:
                 f.write('Time resolution = ' + self.timeresolution.currentText() + '\n')
-                for aname,arow in zip(self.channelsDO,self.timingboxes):
+                for aname,arow in zip(self.channelsDO,self.timingboxesDO):
                     f.write(aname)
                     for abox in arow:
                         f.write('\t' + str(abox.value()))
                     f.write('\n')
+
 
     def timings_load(self,layout):
         loadfilename, _ = QtGui.QFileDialog.getOpenFileName(None,'Load file','Z:\Dataprogrammer\Qweather\Config files','Timing files (*.dat)')
@@ -171,15 +211,12 @@ class SrBrainGui(QWidget):
                             loadrows[-1].append(float(acolumn))
                 if self.channelsDO == loadchannels:
                     columns = len(loadrows[0])
-                    while columns > len(self.timingboxes[0]):
-                        self.modify_timings(self.timingboxes,layout)
+                    while columns > len(self.timingboxesDO[0]):
+                        self.modify_timings(self.timingboxesDO,layout)
 
                     for arow in range(len(loadrows)):
                         for acolumn in range(len(loadrows[arow])):
-                            self.timingboxes[arow][acolumn].setValue(loadrows[arow][acolumn])
-
-
-
+                            self.timingboxesDO[arow][acolumn].setValue(loadrows[arow][acolumn])
 
 
     def make_buttonspanel(self):
@@ -188,7 +225,6 @@ class SrBrainGui(QWidget):
         armButton = QPushButton('Arm Pattern')
         startTimingButton = QPushButton('Start Pattern')
         stopTimingButton = QPushButton('Stop Pattern')
-
 
         if self.Srbrain is not None:
             armButton.clicked.connect(self.arm_pattern)
@@ -207,7 +243,6 @@ class SrBrainGui(QWidget):
         return panel
 
 
-
     def onoff_changed(self,state,name):
         self.channelOnDict[name] = state
         
@@ -218,11 +253,18 @@ class SrBrainGui(QWidget):
                     self.Srbrain.addDigitalOutput(aname,0,1e-3)
                 else:
                     self.Srbrain.addDigitalOutput(aname,0,0.5e-3)
+        self.Srbrain.clearAnalogSequence()
+        for aname in self.channelsAO:
+            if aname == name:
+                if state:
+                    self.Srbrain.addAnalogOutput(aname,0,1e-3)
+                else:
+                    self.Srbrain.addAnalogOutput(aname,0,0.5e-3)
         self.Srbrain.armSequence(user_Max_Time = 1e-3)
         self.Srbrain.startSequence(run_only_once=True)
         
 
-    def modify_timings(self,boxes,layout,add = True):
+    def modify_timings(self,boxes,layout,add = True): # Add DO switch time boxes
         currwidth = len(boxes)
 
         if add:
@@ -240,19 +282,20 @@ class SrBrainGui(QWidget):
             self.setTabOrder(firstbox,followingbox)
 
 
-    def arm_pattern(self):
+    def arm_pattern(self): # Arm digital and/or analog output patterns
         self.Srbrain.clearDigitalSequence()
+        self.Srbrain.clearAnalogOutput()
         xdatalist = []
         ydatalist = []
         maxtime = 0
-        for aname,achannelrow,rownumber in zip(self.channelsDO,self.timingboxes,range(len(self.channelsDO))):
+        for aname,achannelrow,rownumber in zip(self.channelsDO,self.timingboxesDO,range(len(self.channelsDO))):
             timings = sorted(list(set([i.value()*self.timeresolution.currentData() for i in achannelrow])))
             if timings[0] == 0:
                 timings.pop(0)
             xdata = []
             ydata = []
-            ylow = 0.25 + len(self.channelsDO)-rownumber -1.5
-            yhigh = 0.75 + len(self.channelsDO)-rownumber -1.5
+            ylow = 0.25 + len(self.channelsDO) + len(self.channelsAO) -rownumber -1.5
+            yhigh = 0.75 + len(self.channelsDO) + len(self.channelsAO) -rownumber -1.5
             if self.channelOnDict[aname]:
                 timings.insert(0,0)
             if len(timings)%2 != 0:
@@ -272,20 +315,45 @@ class SrBrainGui(QWidget):
                             ydata += [ylow, yhigh, yhigh, ylow]
                 xdatalist.append(np.array(xdata)*1000)
                 ydatalist.append(np.array(ydata))
+                
+        for aname,achannelrow,rownumber in zip(self.channelsAO,self.timingboxesAO,range(len(self.channelsAO))):
+            
+            tstop = max(self.tAO)
+            self.timingboxesAO[rownumber][0].setValue(tstop/self.timeresolution.currentData())# Update value displayed in GUI
+            if tstop > maxtime:
+                maxtime = tstop
+                    
+            self.Srbrain.addAnalogOutput(aname,0.0,tstop,5.0) # Single value voltage
+                
+            xdatalist.append(np.float(1e3)*np.linspace(0,tstop,len(self.UAO))) # UAO should be type np.float64
+            UAOrescaled = 0.5*(self.UAO-min(self.UAO))/(max(self.UAO)-min(self.UAO)) + len(self.channelsAO)-rownumber - 1.25
+            ydatalist.append(np.float(1)*UAOrescaled)
+                
         maxtime += 1e-6 #added this to prevent some corner crashes when two signals have to turn off at the end of the time sequence.
-
-        self.plot_timings(xdatalist,ydatalist)
-
-        self.Srbrain.armSequence(user_Max_Time = maxtime)
-
+        
+        self.plot_timings(xdatalist,ydatalist) # Plot DO and AO signals
+        self.Srbrain.armSequence(self.UAO,user_Max_Time = maxtime)
+        
+        
     def plot_timings(self,xlist,ylist):
         self.plotfig.clear()
         for i in range(len(xlist)):
             xdata = xlist[i]
             ydata = ylist[i]
             if len(xdata) > 0:
-                self.plotfig.addItem(pg.PlotCurveItem(xdata,ydata,pen='w'))
                 self.plotfig.addItem(pg.InfiniteLine(min(ydata),angle=0))
+                self.plotfig.addItem(pg.PlotCurveItem(xdata,ydata,pen='w'))
+        
+        
+    def importAOdata(self,AOdata): # Import AO data from AO popup window
+        [self.tAO,self.UAO] = AOdata # Get the data
+        self.timingboxesAO[0][0].setValue(max(self.tAO)/self.timeresolution.currentData()) # Update value displayed in GUI
+        
+        
+    def make_aowindow(self): # Make AO configuration popup window
+        self.aopopup = aowindow() # Make AO popup
+        self.aopopup.sendAOsignal.connect(self.importAOdata) # Connect to AO popup
+
 
 async def process_events(qapp):
     while True:

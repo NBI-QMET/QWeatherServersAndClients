@@ -140,7 +140,7 @@ class CamGui(QWidget):
                 self.SrBrainprocess.started.connect(lambda : self.write_logmessage('SrBrain: Server started')) 
                 self.SrBrainprocess.finished.connect(lambda : self.write_logmessage('SrBrain: Server stopped'))
                 self.SrBrainprocess.setProcessChannelMode(QtCore.QProcess.MergedChannels)
-                self.SrBrainprocess.start('python',['-u','Z:/Dataprogrammer/Qweather/Servers/Ni6259.py'])
+                self.SrBrainprocess.start('python',['-u','Z:/Dataprogrammer/Qweather/Servers/NI6259.py'])
             else:
                 self.write_logmessage('SrBrain: Cannot start server, as it is already running')
 
@@ -219,14 +219,38 @@ class CamGui(QWidget):
         image = image.astype(float)
         image = image.reshape(self.expectedPixels[1],self.expectedPixels[0])
         image = np.transpose(image)
-        if len(self.imagehistoryarray) > 1:
+        if len(self.imagehistoryarray) == 3:
             self.imagehistoryarray = []
         self.imagehistoryarray.insert(0,image)
-        if len(self.imagehistoryarray) == 2:
-            diffim = (self.imagehistoryarray[0]-self.imagehistoryarray[1])
+        if len(self.imagehistoryarray) == 3:
+            img1= self.imagehistoryarray[1] #-self.imagehistoryarray[0]
+            img2= self.imagehistoryarray[2] #-self.imagehistoryarray[0]
+            #back = self.imagehistoryarray[0]
+            aaaa = 0.1
+            diffim = -np.log((abs(img2)+aaaa)/(abs(img1)+aaaa))
+
+            #diffim[diffim >  6] = np.mean(np.mean(diffim))
+            #bcksubtract = np.mean(np.mean(diffim[1:3][1:3]))
+            #print(bcksubtract)
+            #diffim = diffim
+
+            #np.savetxt('img1.txt',img1)
+            #np.savetxt('img2.txt',img2)
+            #np.savetxt('bckgrd.txt',back)
+            #import sys 
+            #sys.exit()
+            lambdalight = (461*10**(-9))
+            sigma0= (1/(2*np.pi))*3*lambdalight**2
+            A = (2*5.86*1e-6)**2
+            OD = diffim
+
+            N = -A/sigma0*sum(sum(OD))*10**(-6)
+            print("N = ",round(-N,2), "million atoms")
+
             self.mainImage.setImage(diffim)
-            smallim1 = self.imagehistoryarray[0]
-            smallim2 = self.imagehistoryarray[1]
+
+            smallim1 = self.imagehistoryarray[1]
+            smallim2 = self.imagehistoryarray[2]
             for i, anim in enumerate([smallim1,smallim2]):
                 self.imagehistorycontainer[i].setImage(anim)
             self.update_histogram(diffim)
@@ -246,7 +270,11 @@ class CamGui(QWidget):
 
                 if len(self.resultarray) >= self.Npicturebox.value():
                     self.TempMeasuring = False
-            
+
+
+        #self.Srbrainpanel.Srbrain.stopSequence()
+
+    
     def update_histogram(self,diffimage):
         ROIimage = self.ROI.getArrayRegion(diffimage,self.mainImage)
         coords = self.ROI.parentBounds()
@@ -256,6 +284,8 @@ class CamGui(QWidget):
             xdata = ROIimage[:,int(ysize/2+0.5)]
             ydata = ROIimage[int(xsize/2+0.5),:]
 
+            #print("SigmaXum = ",round(np.std(xdata)*2*5.86,3),"SigmaYum = ", round(np.std(ydata)*2*5.86,3))
+            #print(" ")
             self.histogramplot[0].setData(x = list(range(0,xsize)), y = xdata) #red
             self.histogramplot[1].setData(x = list(range(0,ysize)), y = ydata) #green
 
@@ -265,7 +295,7 @@ class CamGui(QWidget):
         except Exception as e:
             print(e)
 
-
+        
 
     def make_imagepanel(self):
         self.expectedPixels = (1920,1200)
@@ -348,7 +378,7 @@ class CamGui(QWidget):
         layout.addWidget(QLabel('Current image'),0,1)
         layout.addWidget(MainPwig,1,0,3,3)
 
-        layout.addWidget(QLabel('NoMot'),1,5)
+        layout.addWidget(QLabel('No MOT'),1,5)
         layout.addWidget(QLabel('MOT'),2,5)
         layout.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -431,6 +461,8 @@ class CamGui(QWidget):
             ExpoAuto.setChecked(True)
         else:
             ExpoAuto.setChecked(False)
+
+        #Singleshot = QCheckBox('Single shot')
         Gainlabel = QLabel('Gain Factor')
         Gainbox = QDoubleSpinBox()
         Gainbox.setValue(CamGain)
@@ -490,6 +522,7 @@ class CamGui(QWidget):
         layout.addWidget(Expolabel,      0,0)
         layout.addWidget(Expobox,        0,1)
         layout.addWidget(ExpoAuto,       0,2)
+        #layout.addWidget(Singleshot,     2,2)
         layout.addWidget(Gainlabel,      1,0)
         layout.addWidget(Gainbox,        1,1)
         layout.addWidget(GainAuto,       1,2)
@@ -501,7 +534,7 @@ class CamGui(QWidget):
         layout.addWidget(savelabel,4,0)
         layout.addWidget(self.SaveImagesBox,4,1)
         layout.addWidget(self.saveBar,4,2)
-
+        #print(Singleshot.isChecked())
         panel.setLayout(layout)
         return panel
 
