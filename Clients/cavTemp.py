@@ -6,7 +6,7 @@ import os
 import sys
 import datetime
 
-cnx = qweather.QWeatherClient("tcp://10.90.61.13:5559")
+cnx = qweather.QWeatherClient("tcp://10.90.61.231:5559")
 
 mm2 = cnx.RSMM2
 

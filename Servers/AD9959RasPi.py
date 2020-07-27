@@ -5,8 +5,9 @@
 
 
 from qweather import QWeatherServer, QMethod
-#import spidev
-#import RPi.GPIO as gpio
+import spidev
+import RPi.GPIO as gpio
+from time import sleep
 
 __author__ = 'Asbjorn Arvad Jorgensen'
 __version__ = '1.0'
@@ -22,13 +23,15 @@ class AD9959(QWeatherServer):
     __regACR = 0x06 #address (Amplitude control register)
 
 
-    def __init__(self,dds):
-        self.QWeatherStationIP = "tcp://localhost:5559"
-        self.servername = 'ACEDDS{:d}'.format(dds)
+    def __init__(self,name = None):
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
+        if name is None:
+            print('No name specified, running aborted')
+        else:
+            self.servername = name + 'DDS'
         self.verbose = False
         self.debug = False
-        self.demo = True
-        self.dds = dds
+        self.demo = False
         self.initialize_sockets()
         print('*'*50)
         print('Server Online')
@@ -43,7 +46,7 @@ class AD9959(QWeatherServer):
             gpio.setup(25,gpio.OUT) # IOupdata pin
             gpio.setup(24,gpio.OUT) # Chip reset pin
             self.spi = spidev.SpiDev()
-            self.spi.open(0,self.dds)
+            self.spi.open(0,0)
             self.chipReset()
         
     def setChannel(self,ch):
@@ -77,13 +80,14 @@ class AD9959(QWeatherServer):
             setfreq = (F_clk-freq/2)
         else:
             setfreq = F_clk-freq
-        FTW = int(round(2**32*(freq/F_clk)))
+        FTW = int(round(2**32*(setfreq/F_clk)))
         data.extend([FTW >> (8*i) & 0xff for i in range(3,-1,-1)])
         if self.demo:
             return channel,freq,data
         else:
             self.spi.xfer2(data[:])
             self.IOupdate()
+            # print('frequency set',setfreq)
 
     @QMethod
     def setPhase(self,channel,phase):
@@ -99,7 +103,7 @@ class AD9959(QWeatherServer):
         else:
             self.spi.xfer2(data[:])
             self.IOupdate()
-
+            
     @QMethod
     def setAmplitude(self,channel,amplitude):
         '''Sets the Phase of the channel
@@ -125,6 +129,7 @@ class AD9959(QWeatherServer):
         data = [self.__regFR1, 0x80, 0x00, 0x20]
         self.spi.xfer2(data[:])
         self.IOupdate()
+        print('Chip was reset')
 
 
     def IOupdate(self):
@@ -147,9 +152,14 @@ class AD9959(QWeatherServer):
 if __name__ == "__main__":
     from multiprocessing import Process
 
-    serverA = AD9959(0)
-#    serverB = AD9959(1)
 
+    name = input('Please write DDS server name (AceA, AceB, Sr1, Maus)')
+    print(name)
+
+    server = AD9959(name=name)
+    #serverB = AD9959(1)
+    server.run()
+    '''
     pA = Process(target=serverA.run())
     pB = Process(target=serverB.run())
     pA.start()
@@ -162,4 +172,4 @@ if __name__ == "__main__":
         pA.terminate()
         pB.terminate()
         print('Servers shut down')
-
+    '''

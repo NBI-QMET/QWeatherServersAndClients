@@ -14,7 +14,7 @@ __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 class Server(QWeatherServer):
 
     def __init__(self):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         self.servername = 'SpectrumAnalyzer'
         self.comport = 2       # Comport for the GPIB-to-USB controller
         self.GPIB_addr = 18 # GPIB address of the HPIB.

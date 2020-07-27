@@ -21,14 +21,14 @@ class AD9959Gui(QWidget):
     def __init__(self,loop = None):
         super().__init__()
         QWeatherStationIP = "tcp://10.90.61.231:5559"
-        name = 'AD9959GUI_SrI'
+        name = 'AD9959GUI'
         if loop is None:
             self.loop = asyncio.get_event_loop()
         else:
             self.loop = loop
         self.client = QWeatherClient(QWeatherStationIP,name=name,loop=self.loop)
         try:
-            self.server = self.client.SR1DDS
+            self.server = self.client.ACEDDSB
         except Exception as e:
             print(e,'could not find server')
         self.setWindowTitle('AD9959')
@@ -39,7 +39,7 @@ class AD9959Gui(QWidget):
         self.loop.create_task(self.client.run())
 
     def initialize(self):
-        titlelabel = QLabel('Sr-I DDS')
+        titlelabel = QLabel('Acetylen 2')
         titlelabel.setFont(QtGui.QFont('Helvetica',20,75))
         channelpattern = self.make_channel_panel()
         frequencyPanel = self.make_frequency_panel()

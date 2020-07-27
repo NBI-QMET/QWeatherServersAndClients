@@ -18,7 +18,7 @@ __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 class Server(QWeatherServer):
     """Class for RS multimeter. If Initialized in a terminal, will create a terminal menu where the name and address can be picked"""
     def __init__(self,name = None, address = None):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         if name is None and address is None:
             self.servername = 'RSMultimeter1'
             self.address = 'TCPIP0::10.90.61.204::INSTR'
@@ -67,6 +67,22 @@ class Server(QWeatherServer):
                                                                                         ' Help us Obi Wan Kenobi (Stefan) - You are our only hope\n'+
                                                                                         '(Something has gone wrong!)\nTo the mausoleum!')
             raise
+    @QMethod
+    def get_statistics(self):
+        """
+        **QMethod** Grabs the statistics of the current measurement and resets the statistics
+        Returns:
+            tuple( Average (Float), Std (Float), Max (Float), Min (Float),Npoints (Float))
+            Measurement on screen (Float)
+
+        """
+        avg = float(self.hardware.query('CALC:AVER:AVER?'))
+        mx = float(self.hardware.query('CALC:AVER:MAX?'))
+        mn = float(self.hardware.query('CALC:AVER:MIN?'))
+        std = float(self.hardware.query('CALC:AVER:SDEV?'))
+        Npoints = float(self.hardware.query('CALC:AVER:COUN?'))
+        self.hardware.write('CALC:AVER:CLE') #Clears the statistics
+        return (avg,std,mx,mn,Npoints)
 
         
 
@@ -85,7 +101,7 @@ class Server(QWeatherServer):
 
 
 if __name__ == "__main__":
-    with open('Z:/Dataprogrammer/Qweather/Config files/Ipadresses.json') as json_config_file:
+    with open('/home/qbrain/Datalager/Dataprogrammer/Qweather/Config files/Ipadresses.json') as json_config_file:
         ipdata = json.load(json_config_file)
     menu = ConsoleMenu()
     Databaselist = ipdata['Multimeters']

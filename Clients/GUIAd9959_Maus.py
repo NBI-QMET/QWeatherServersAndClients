@@ -21,14 +21,14 @@ class AD9959Gui(QWidget):
     def __init__(self,loop = None):
         super().__init__()
         QWeatherStationIP = "tcp://10.90.61.231:5559"
-        name = 'AD9959GUI_SrI'
+        name = 'AD9959GUI_Maus'
         if loop is None:
             self.loop = asyncio.get_event_loop()
         else:
             self.loop = loop
         self.client = QWeatherClient(QWeatherStationIP,name=name,loop=self.loop)
         try:
-            self.server = self.client.SR1DDS
+            self.server = self.client.mausDDS
         except Exception as e:
             print(e,'could not find server')
         self.setWindowTitle('AD9959')

@@ -24,7 +24,7 @@ class AD9959(QWeatherServer):
 
 
     def __init__(self,dds):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         if dds == 0:
             self.servername = 'ACEDDSA'
         elif dds == 1:

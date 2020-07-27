@@ -14,7 +14,7 @@ __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
 class Server(QWeatherServer):
     def __init__(self,name = None, address = None):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         if name is None and address is None:
             self.servername = 'RSESA1'
             self.address = 'TCPIP0::10.90.61.204::INSTR'

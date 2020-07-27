@@ -40,7 +40,7 @@ class CamGui(QWidget):
 
     def __init__(self,loop = None):
         super().__init__()
-        QWeatherStationIP = "tcp://10.90.61.13:5559"
+        QWeatherStationIP = "tcp://10.90.61.231:5559"
         name = 'CameraGUI'
         if loop is None:
             self.loop = asyncio.get_event_loop()

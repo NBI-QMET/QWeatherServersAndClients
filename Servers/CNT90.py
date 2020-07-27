@@ -25,7 +25,7 @@ class logging_thread(threading.Thread):
 class Server(QWeatherServer):
 
     def __init__(self):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         self.servername = 'FreqCounter'
         self.USBport = 'USB0::0x14EB::0x0090::410690::INSTR'
         self.verbose = False
@@ -55,14 +55,15 @@ class Server(QWeatherServer):
 
 
     @QMethod
-    def get_frequency(self,Npoints = None,gatetime = None, binary = False):
+    def get_frequency(self,Npoints = None,gatetime = None, chan = 1,binary = False):
         """Return the currently measured frequency"""
         if Npoints is None:
-            num = self.hardware.query('MEAS:FREQ?')
+            num = self.hardware.query('MEAS:FREQ?,(@{:d})'.format(chan))
             print(num)
         else:
 #            self.hardware.write(':DISP:ENAB OFF;:CAL:INT:AUTO 0;:FREQ:REGR OFF;')
-            self.hardware.write(':CONF:ARR:FREQ ({:d});:DISP:ENAB OFF;:CAL:INT:AUTO 0;:FREQ:REGR OFF;:FORM:TINF ON;:FORM PACK;:INP:IMP 1E6;:ACQ:APER {:.9f};:INIT;'.format(Npoints,gatetime))
+            self.hardware.write(':CONF:ARR:FREQ ({:d}),(@{:d});:DISP:ENAB OFF;:CAL:INT:AUTO 0;:FREQ:REGR OFF;:FORM:TINF ON;:FORM PACK;:INP2:IMP 50;:ACQ:APER {:.9f};:INIT;'.format(Npoints,chan,gatetime))
+
             while True:
                 try:
                     check = self.hardware.query('*OPC?')
@@ -94,16 +95,18 @@ class Server(QWeatherServer):
             freq2 = (Npos[i+1] - Npos[i])/(Tneg[i+1] - Tneg[i])
             print(i,freq1*1e-3,freq2*1e-3,(Npos[i+1] - Npos[i]),(Tpos[i+1] - Tpos[i]))
 
-
         return num
 
     @QMethod
-    def log_frequency(self,gatetime,savelocation,logtime,syncronize = False):
+    def log_frequency(self,gatetime,savelocation,logtime,chan,syncronize = False):
         """Logs the frequency at a certain gatetime and stores it in a textfile at a location"""
+        self.hardware.write(':CONF:FREQ (@{:d})'.format(chan))
         self.hardware.write(':DISP:ENAB OFF;:CAL:INT:AUTO 0;:FREQ:REGR OFF;')
         self.hardware.write(':TRIG:COUN 1;:ARM:COUN 750000;:FORM:TINF ON')
         self.hardware.write(':FORM PACK')
-        self.hardware.write(':INP:IMP 50;:ACQ:APER {:.9f}s'.format(gatetime))
+        self.hardware.write(':INP{:d}:IMP 50;:ACQ:APER {:.9f}s'.format(chan,gatetime))
+
+        self.hardware.write(':INP{:d}:LEV:AUTO OFF;:INP{:d}:LEV 0'.format(chan,chan))
         if syncronize:
             self.hardware.write(':ARM:SOUR EXT4')
         else:
@@ -138,6 +141,7 @@ class Server(QWeatherServer):
             print(data)
             data = self.convert_binary_to_float(data,Npoints)
             numarray = data
+            print(data)
             t0 = data[1][0]
             tend = data[1][-1]- t0
             tendprev = 0
@@ -165,7 +169,6 @@ class Server(QWeatherServer):
                 f.write("{:.10f}, {:.10f}\n".format(times,freq))
             print('Done writing file')
             time.sleep(0.5)
-            self.initialize_hardware()
 
 
 
@@ -198,7 +201,7 @@ class Server(QWeatherServer):
     def convert_binary_to_float(self,binary,Npoints):
         data = [[],[]]
         if binary[:4] == b'#216':
-            #print('Bad reading, error message. Probably tried to read more points than was available')
+            print('Bad reading, error message. Probably tried to read more points than was available')
             return None
         cleanbinary = binary[int(4+np.floor(np.log10(Npoints))):-1]
 

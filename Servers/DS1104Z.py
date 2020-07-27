@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-'''Server (Qweather) to grab data from the Rode&Schwartz RBT2004 oscilloscope'''
+'''Server (Qweather) to grab data from the Rigol DS1104Z oscilloscope'''
 from qweather import QWeatherServer, QMethod
 import visa
 import numpy as np
@@ -8,7 +8,7 @@ import time
 import struct
 import sys
 __author__ = 'Asbjorn Arvad Jorgensen'
-__version__ = '1.1'
+__version__ = '0.9'
 __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
 class Server(QWeatherServer):
@@ -32,7 +32,8 @@ class Server(QWeatherServer):
         print('Oscilloscope server running Made contact with:')
         print(self.hardware.query('*IDN?'))
         print('*'*50)
-        self.hardware.write('FORM REAL; FORM MSBF')
+        self.hardware.write('WAV:MODE MAX')
+        self.hardware.write('WAV:FORM ASC')
         self.hardware.timeout=2000
 
 

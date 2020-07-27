@@ -60,7 +60,7 @@ class AcetyleneADC(QWeatherServer):
 
 
     def __init__(self):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         self.verbose = False
         self.debug = False
         self.demo = False

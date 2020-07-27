@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-'''Server (Qweather) to control the Rigol DG1062 DDS'''
+'''Server (Qweather) to control the Rigol DG1022 DDS'''
 from qweather import QWeatherServer, QMethod
 import visa
 import numpy as np
@@ -79,10 +79,6 @@ class Server(QWeatherServer):
             self.hardware.write('OUTP1 OFF')
         elif channel==2:
             self.hardware.write('OUTP2 OFF')
-
-    @QMethod
-    def program_AW(self,waveshape):
-        self.hardware.write(':SOUR1:DATA VOLATILE' + [',' + str(i) for i in waveshape])
 
 
 

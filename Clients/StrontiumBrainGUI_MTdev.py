@@ -109,8 +109,10 @@ class SrBrainGui(QWidget):
             timinglayout.addWidget(helpbutton,1,4)
             self.timingboxesDO = []
             self.timingboxesAO = []
-            self.tAO = []
-            self.UAO = []
+            self.tAO0 = []
+            self.UAO0 = []
+            self.tAO1 = []
+            self.UAO1 = []
             self.tUnit = 1e3 # Multiply by 1e3 to view 0.001 s as 1 ms, etc...
             self.aopanels = []
             self.channelOnDict = {}
@@ -140,9 +142,14 @@ class SrBrainGui(QWidget):
                 startOn.stateChanged.connect(lambda state, aname=name:self.onoff_changed(state,aname))
                 
                 # Add button to configure AO signal and open popup. Unlike the DO boxes this is just informative and the info is edited with AO popup.
-                self.aoconfig = QPushButton('Configure')
-                timinglayout.addWidget(self.aoconfig,currentrow,2)
-                self.aoconfig.pressed.connect(lambda: SrBrainGui.make_aowindow(self))
+                if "0" in name: # AO0 channel
+                    self.aoconfig = QPushButton('Configure')
+                    timinglayout.addWidget(self.aoconfig,currentrow,2)
+                    self.aoconfig.pressed.connect(lambda: SrBrainGui.make_aowindow(self))
+                elif "1" in name: # AO1 channel
+                    self.aoconfig1 = QPushButton('Configure')
+                    timinglayout.addWidget(self.aoconfig1,currentrow,2)
+                    self.aoconfig1.pressed.connect(lambda: SrBrainGui.make_aowindow1(self))
                 
                 # Add box to show the AO signal cycle time
                 self.timingboxesAO.append([])
@@ -261,7 +268,7 @@ class SrBrainGui(QWidget):
                     self.Srbrain.addAnalogOutput(aname,0,1e-3)
                 else:
                     self.Srbrain.addAnalogOutput(aname,0,0.5e-3)
-        self.Srbrain.armSequence(self.UAO,user_Max_Time = 1e-3)
+        self.Srbrain.armSequence(self.UAO0,self.UAO1,user_Max_Time = 1e-3)
         self.Srbrain.startSequence(run_only_once=True)
         
 
@@ -319,22 +326,32 @@ class SrBrainGui(QWidget):
                 
         for aname,achannelrow,rownumber in zip(self.channelsAO,self.timingboxesAO,range(len(self.channelsAO))):
             
-            if len(self.tAO) > 0: # Don't run this if there if the AO time array is empty
-                tstop = max(self.tAO)
+            if len(self.tAO0) > 0 or len(self.tAO1) > 0: # Don't run this if there if the AO time array is empty
+                if len(self.tAO0) > 0:
+                    tstop = max(self.tAO0)
+                else:
+                    tstop = max(self.tAO1)
+                if len(self.tAO1) > 0:
+                    tstop = max({tstop,max(self.tAO1)})
                 self.timingboxesAO[rownumber][0].setValue(tstop/self.timeresolution.currentData())# Update value displayed in GUI
                 if tstop > maxtime:
                     maxtime = tstop
                     
                 self.Srbrain.addAnalogOutput(aname,0.0,tstop,5.0) # Single value voltage
                 
-                xdatalist.append(np.float(1e3)*np.linspace(0,tstop,len(self.UAO))) # UAO should be type np.float64
-                UAOrescaled = 0.5*(self.UAO-min(self.UAO))/(max(self.UAO)-min(self.UAO)) + len(self.channelsAO)-rownumber - 1.25
-                ydatalist.append(np.float(1)*UAOrescaled)
-                
+                if rownumber == 0 and len(self.tAO0) > 0:
+                    xdatalist.append(np.float(1e3)*np.linspace(0,tstop,len(self.UAO0))) # UAO should be type np.float64
+                    UAOrescaled = 0.5*(self.UAO0-min(self.UAO0))/(max(self.UAO0)-min(self.UAO0)) + len(self.channelsAO)-rownumber - 1.25
+                    ydatalist.append(np.float(1)*UAOrescaled)
+                elif rownumber == 1 and len(self.tAO1) > 0:
+                    xdatalist.append(np.float(1e3)*np.linspace(0,tstop,len(self.UAO1))) # UAO should be type np.float64
+                    UAOrescaled = 0.5*(self.UAO1-min(self.UAO1))/(max(self.UAO1)-min(self.UAO1)) + len(self.channelsAO)-rownumber - 1.25
+                    ydatalist.append(np.float(1)*UAOrescaled)
+                 
         maxtime += 1e-6 #added this to prevent some corner crashes when two signals have to turn off at the end of the time sequence.
         
         self.plot_timings(xdatalist,ydatalist) # Plot DO and AO signals
-        self.Srbrain.armSequence(self.UAO,user_Max_Time = maxtime)
+        self.Srbrain.armSequence(self.UAO0,self.UAO1,user_Max_Time = maxtime)
         
         
     def plot_timings(self,xlist,ylist):
@@ -348,13 +365,21 @@ class SrBrainGui(QWidget):
         
         
     def importAOdata(self,AOdata): # Import AO data from AO popup window
-        [self.tAO,self.UAO] = AOdata # Get the data
-        self.timingboxesAO[0][0].setValue(max(self.tAO)/self.timeresolution.currentData()) # Update value displayed in GUI
-        
+        [self.tAO0,self.UAO0] = AOdata # Get the data
+        self.timingboxesAO[0][0].setValue(max(self.tAO0)/self.timeresolution.currentData()) # Update value displayed in GUI
+    
+    def importAOdata1(self,AOdata): # Import AO data from AO popup window
+        [self.tAO1,self.UAO1] = AOdata # Get the data
+        self.timingboxesAO[1][0].setValue(max(self.tAO1)/self.timeresolution.currentData()) # Update value displayed in GUI
+    
         
     def make_aowindow(self): # Make AO configuration popup window
         self.aopopup = aowindow() # Make AO popup
         self.aopopup.sendAOsignal.connect(self.importAOdata) # Connect to AO popup
+        
+    def make_aowindow1(self): # Make AO configuration popup window
+        self.aopopup1 = aowindow() # Make AO popup
+        self.aopopup1.sendAOsignal.connect(self.importAOdata1) # Connect to AO popup
 
 
 async def process_events(qapp):

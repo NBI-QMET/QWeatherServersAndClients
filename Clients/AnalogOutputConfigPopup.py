@@ -9,7 +9,6 @@ from PyQt5.QtWidgets import *
 from PyQt5 import QtGui,QtCore
 import sys
 import asyncio
-from qweather import QWeatherClient
 import time
 import numpy as np
 import pyqtgraph as pg
@@ -44,6 +43,9 @@ class aowindow(QSplitter):
         
         plotpanel.aoplotfig = pg.PlotWidget()
         plotpanel.aoplotfig.setYRange(-5,5)
+        plotpanel.aoplotfig.setLabel('left', 'Voltage [V]', color='white', size=30)
+        plotpanel.aoplotfig.setLabel('bottom', 'Time [s]', color='white', size=30)
+        plotpanel.aoplotfig.showGrid(x=True, y=True)
     
         layout = QGridLayout()
         layout.addWidget(plotpanel.aoplotfig,0,0)
@@ -133,14 +135,15 @@ class aowindow(QSplitter):
         self.aowaveform.clear() # Clear waveform dictionary
         self.aowaveform["waveform"] = "MOT" # Waveform type
         self.aowaveform["dt"] = 1e-6 # seconds
-        self.aowaveform["Ublue"] = -2.18 # Volt, blue MOT reference voltage
-        self.aowaveform["Ured"] = -0.218 # Volt, red MOT reference voltage
+        self.aowaveform["Ublue"] = 3.3 # Volt, blue MOT reference voltage
+        self.aowaveform["Ured"] = 1.15 # Volt, red MOT reference voltage
         self.aowaveform["Ucompensate"] = 0 # Volt, decaying compensation voltage
         self.aowaveform["tBlue"] = 0.2 # seconds, blue MOT duration
         self.aowaveform["tRed"] = 0.2 # seconds, red MOT duration
         self.aowaveform["tau"] = 10e-3 # seconds, decay time of coil and holder B-field
-        self.aowaveform["tauSafetyUp"] = 20e-6 # seconds, safety decay time when switching to low field
-        self.aowaveform["tauSafetyDown"] = 20e-6 # seconds, safety decay time when switching to high field
+        self.aowaveform["tauSafetyBlue"] = 10e-3 # seconds, safety decay time when switching to high field
+        self.aowaveform["tauSafetyRed"] = 10e-3 # seconds, safety decay time when switching to low field
+        self.aowaveform["tauSafetyInit"] = 0 # Boolean
         aowindow.modify_config(self,self.aowaveform,self.configlayout,self.nBaseWidgets) # Update the AO configuration GUI
         
         [t,U] = aowindow.waveformToData(self,self.aowaveform) # Translate waveform to arrays
@@ -188,14 +191,15 @@ class aowindow(QSplitter):
     def waveformToData(self,aowaveform):
         
         if aowaveform["waveform"] == "Constant":
-            tmax = 1
+            tmax = 0.1
             dt = aowaveform["dt"]
             offset = aowaveform["voltage"]
             
             steps = round(tmax/dt)+1
             t = np.linspace(0,tmax,steps)
             #t = np.arange(0,tmax,dt)
-            U = list(0*t + offset)
+            U = np.linspace(offset,offset+1e-10,steps)
+            U = list(U)
             t = list(t)
         elif aowaveform["waveform"] == "Triangle":
             dt = aowaveform["dt"]
@@ -233,8 +237,9 @@ class aowindow(QSplitter):
             tBlue = aowaveform["tBlue"]
             tRed = aowaveform["tRed"]
             tau = aowaveform["tau"]+1e-30
-            tauSafetyUp = aowaveform["tauSafetyUp"]+1e-30
-            tauSafetyDown = aowaveform["tauSafetyDown"]+1e-30
+            tauSafetyBlue = aowaveform["tauSafetyBlue"]+1e-30
+            tauSafetyRed = aowaveform["tauSafetyRed"]+1e-30
+            tauSafetyInit = aowaveform["tauSafetyInit"]+1e-30
             
             tmax = tBlue+tRed
             steps = round(tmax/dt)+1
@@ -242,18 +247,26 @@ class aowindow(QSplitter):
             redSteps = steps-blueSteps
             #t = np.arange(0,tmax,dt)
             t = np.linspace(0,tmax,steps)
-            U1 = Ublue + 0*t[0:blueSteps] - Ucomp*np.exp(-t[0:blueSteps]/tau) - (Ublue-Ured-Ucomp)*np.exp(-t[0:blueSteps]/tauSafetyUp)
-            U2 = Ured + 0*t[0:redSteps] + Ucomp*np.exp(-t[0:redSteps]/tau) + (Ublue-Ured-Ucomp)*np.exp(-t[0:redSteps]/tauSafetyDown)
+            if abs(tauSafetyInit) < 1e-20:
+                U1 = Ublue + Ucomp*np.exp(-t[0:blueSteps]/tau) - (Ublue-Ured+Ucomp)*np.exp(-t[0:blueSteps]/tauSafetyBlue)
+                U2 = Ured - Ucomp*np.exp(-t[0:redSteps]/tau) + (Ublue-Ured+Ucomp)*np.exp(-t[0:redSteps]/tauSafetyRed)
+                U = list(U1)+list(U2)
+            else:
+                U = Ublue + (Ured-Ublue)*(1/(1 + np.exp(-(t-tRed)/tauSafetyRed)) + 1/(1 + np.exp((t-t[-1])/tauSafetyBlue)) - 1/(1 + np.exp((t[0]-t)/tauSafetyBlue)))
+                U = U - Ucomp*np.exp(-np.power((t-tRed+1*tauSafetyRed)/tau,2))
+                U = list(U)
                     
             t = list(t)
-            U = list(U1)+list(U2)
         return [t,U]
     
     def plotWaveform(self,plotpanel,xlist,ylist):
         self.AOdata = [xlist,ylist] # Export U(t) data before plotting
         self.sendAOsignal.emit(self.AOdata) # Export U(t) data before plotting
         plotpanel.aoplotfig.clear()
+        plotpanel.aoplotfig.setLabel('left', 'Voltage [V]', color='white', size=30)
+        plotpanel.aoplotfig.setLabel('bottom', 'Time [s]', color='white', size=30)
         plotpanel.aoplotfig.addItem(pg.PlotCurveItem(xlist,ylist,pen='w'))
+        plotpanel.aoplotfig.showGrid(x=True, y=True)
         plotpanel.aoplotfig.addItem(pg.InfiniteLine(0,angle=0))
 
 async def process_events(qapp):

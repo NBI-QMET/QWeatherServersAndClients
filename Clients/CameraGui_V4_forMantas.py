@@ -51,6 +51,7 @@ class CamGui(QWidget):
         self.camprocess = None
         self.SrBrainprocess = None
         self.db = self.client.Database
+        self.mm = self.client.AgiMM1
         self.logpath = 'Z:\Sr1\MOT Image Logging'
 
         self.setWindowTitle('BlackFly Camera GUI')
@@ -223,10 +224,17 @@ class CamGui(QWidget):
         A = (2*5.86*1e-6)**2
         OD = diffimage
 
+        U = self.mm.measure_voltage()
+        time.sleep(0.1)
+
         N = A/sigma0*sum(sum(OD))*10**(-6)
         self.atomnumberlist.append(N)
         self.update_atom_number()
-        self.db.write('MOT',tags={'Experiment':'Sr1'},fields={'Atom number':N})
+        tstamp = datetime.datetime.now()
+        timeNow = tstamp.timestamp()*1e9
+        self.db.write('MOT',tags={'Experiment':'Sr1'},fields={'Atom number':N},time=timeNow)
+        self.db.write('Repumper',tags={'Experiment':'Sr1'},fields={'Cavity Piezo Voltage':float(U)},time=timeNow)
+        print("U = ",U, "Volts")
         print("N = ",round(N,2), "million atoms")
 
     def update_atom_number(self):

@@ -18,17 +18,27 @@ __email__ = 'Asbjorn.Arvad@nbi.ku.dk'
 
 class AD9959Gui(QWidget):
 
-    def __init__(self,loop = None):
+    def __init__(self,name,loop = None):
         super().__init__()
         QWeatherStationIP = "tcp://10.90.61.231:5559"
-        name = 'AD9959GUI_SrI'
+        guiname = 'AD9959GUI'+name
         if loop is None:
             self.loop = asyncio.get_event_loop()
         else:
             self.loop = loop
-        self.client = QWeatherClient(QWeatherStationIP,name=name,loop=self.loop)
+        self.client = QWeatherClient(QWeatherStationIP,name=guiname,loop=self.loop)
         try:
-            self.server = self.client.SR1DDS
+            print(name)
+            if name =='AceA':
+                self.server = self.client.AceADDS
+            elif name =='AceB':
+                self.server = self.client.AceBDDS
+            elif name =='Sr1':
+                self.server = self.client.Sr1DDS
+            elif name =='Maus':
+                self.server = self.client.MausDDS
+            else:
+                raise Exception('Unknown Server Name')
         except Exception as e:
             print(e,'could not find server')
         self.setWindowTitle('AD9959')
@@ -39,7 +49,7 @@ class AD9959Gui(QWidget):
         self.loop.create_task(self.client.run())
 
     def initialize(self):
-        titlelabel = QLabel('Sr-I DDS')
+        titlelabel = QLabel(self.server.name)
         titlelabel.setFont(QtGui.QFont('Helvetica',20,75))
         channelpattern = self.make_channel_panel()
         frequencyPanel = self.make_frequency_panel()
@@ -99,9 +109,9 @@ class AD9959Gui(QWidget):
     def make_frequency_panel(self):
         panel = QFrame()
         freqbox = QDoubleSpinBox()
-        freqbox.setRange(0,1000)
+        freqbox.setRange(1,1000)
         freqbox.setSingleStep(1)
-        freqbox.setDecimals(10)
+        freqbox.setDecimals(6)
         freqbox.setSuffix(' MHz')
         freqbox.setObjectName('FreqBox')
         resbox = QComboBox()
@@ -117,7 +127,7 @@ class AD9959Gui(QWidget):
             achan[3] = freqbox
 
         def freqedited(freq):
-            # self.currentchannel = -1
+            self.currentchannel = -1
             if self.currentchannel == -1:
                 for achan in self.channeldata:
                     achan[0] = freq
@@ -205,7 +215,7 @@ class AD9959Gui(QWidget):
                 for achan in self.channeldata:
                     achan[2] = phase
             self.server.setPhase(self.currentchannel,phase)
-            phaselabel.setText('{:.1f} degrees'.format(phase))
+            phaselabel.setText('{:.1f} Degrees'.format(phase))
             self.channeldata[self.currentchannel-1][2] = phase
 
         phasebox.valueChanged.connect(lambda :phaseedited(phasebox.value()))
@@ -233,7 +243,7 @@ class AD9959Gui(QWidget):
         #    self.resize(settings.value("windowsize").toSize());
 
             for i in range(len(self.channeldata)):
-                name = 'channel{:d}'.format(i+1)
+                name = 'channel{:.1f}'.format(i+1)
                 if settings.contains(name):
                     value = settings.value(name,type=float)
                     self.channeldata[i][0] = value[0]
@@ -268,24 +278,20 @@ async def process_events(qapp):
 
 def icon():
     iconstring = ["20 20 3 1","   c #FFFFFF",".  c #000000","+  c #FDFDFD",
-                "  ....              ",
-                "     .              ",
-                "  ....              ",
-                "  .             ... ",
-                "  ....          ....",
-                "                ....","   ........     . ..","   .      .     . . ","   .      .     .   ",
-                "   ........     .   ","   .      .     .   ","   .      .     .   ","   .      .     .   ",
-                "+  .      .  ....   "," ...      . .....   ","....      . .....   ","....    ...  ...    ",
-                " ..    ....         ","       ....         ","        ..          "]
+                "                    ","                    ","                    ","                ... ","                ....",
+                "                ....","   ........     . ..","   .      .     . . ","   .      .     .   ","   ........     .   ",
+                "   .      .     .   ","   .      .     .   ","   .      .     .   ","+  .      .  ....   "," ...      . .....   ",
+                "....      . .....   ","....    ...  ...    "," ..    ....         ","       ....         ","        ..          "]
     return iconstring
 if __name__=="__main__":
     a = QApplication(sys.argv)
     a.setWindowIcon(QtGui.QIcon(QtGui.QPixmap(icon())))
     import ctypes
-    myappid = u'mycompany.myproduct.subproduct.version2314' # arbitrary string
+    myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     loop = asyncio.get_event_loop()
-    w = AD9959Gui(loop)
+    name = input('Enter name of DDS you want to control (AceA,AceB,Sr1,Maus)')
+    w = AD9959Gui(name,loop)
     #loop.create_task(process_events(a))
     #loop.run_forever()
 #    try:

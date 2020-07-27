@@ -3,7 +3,7 @@ import datetime
 import time
 import os
 import numpy as np
-cnx = QWeatherClient("tcp://10.90.61.13:5559")
+cnx = QWeatherClient("tcp://10.90.61.231:5559")
 
 serv1 = cnx.FreqCounter
 gatetime = 10e-3

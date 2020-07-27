@@ -109,9 +109,9 @@ def icon():
 if __name__=="__main__":
     a = QApplication( [sys.argv] )
     a.setWindowIcon(QtGui.QIcon(QtGui.QPixmap(icon())))
-    import ctypes
-    myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+   # import ctypes
+   # myappid = u'mycompany.myproduct.subproduct.version' # arbitrary string
+   # ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 #    loop = QEventLoop(a)
  #   asyncio.set_event_loop(loop)
     loop = asyncio.get_event_loop()

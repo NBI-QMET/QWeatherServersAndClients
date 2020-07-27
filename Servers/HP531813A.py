@@ -28,7 +28,7 @@ class Server(QWeatherServer):
     def __init__(self):
         self.comport = 'COM10'
         self.GPIBaddr = 9
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         self.servername = 'FreqCounterHP'
 
         self.verbose = False

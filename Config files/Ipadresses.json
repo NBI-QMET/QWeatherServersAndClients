@@ -30,7 +30,12 @@
 		"RSMM2":
 				{
 			"adress" : "10.90.61.205",
-			"type": "HMC 8012"}
+			"type": "HMC 8012"},
+		"AgiMM1":
+				{
+			"adress" : "10.90.61.221",
+			"type": "Agilent 34461A"}
+
 	},
 	"DDS":{
 		"RigolDDS2":
@@ -54,8 +59,10 @@
 	"PCs":{
 		"ESAPC":"10.90.61.13"
 	},
+
 	"Others":{
-		"IBOOT SR1 power switch":"10.90.61.210"
+		"IBOOT SR1 power switch":"10.90.61.210",
+		"QWeatherStation":"10.90.61.231"
 	}
 }
 

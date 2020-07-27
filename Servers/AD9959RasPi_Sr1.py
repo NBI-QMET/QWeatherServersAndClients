@@ -24,11 +24,9 @@ class AD9959(QWeatherServer):
 
 
     def __init__(self,dds):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
-#        if dds == 0:
-        self.servername = 'SR1DDS'
-#        elif dds == 1:
-#            self.servername = 'ACEDDSB'
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
+        if dds == 0:
+            self.servername = 'SR1DDS'
         self.verbose = False
         self.debug = False
         self.demo = False
@@ -43,7 +41,6 @@ class AD9959(QWeatherServer):
             self.freqdoubling = True
         elif self.dds == 1:
             self.freqdoubling = True
-        self.freqdoubling = False
         if self.demo:
             print('Initializing in DEMO mode')
         else:
@@ -53,7 +50,6 @@ class AD9959(QWeatherServer):
             self.spi = spidev.SpiDev()
             self.spi.open(0,self.dds)
             self.chipReset()
-            print('Hardware ready')
         
     def setChannel(self,ch):
         '''Sets the channel of the DDS to be used (0,1,2,3) -1 means all channels'''
@@ -86,8 +82,6 @@ class AD9959(QWeatherServer):
             setfreq = (F_clk-freq/2)
         else:
             setfreq = F_clk-freq
-        setfreq = abs(F_clk-freq)
-        print(setfreq)
         FTW = int(round(2**32*(setfreq/F_clk)))
         data.extend([FTW >> (8*i) & 0xff for i in range(3,-1,-1)])
         if self.demo:
@@ -118,9 +112,7 @@ class AD9959(QWeatherServer):
         setPhase(int Channel, float Phase(Degrees))
         return None'''
         self.setChannel(channel)
-        print(amplitude)
         ASF = int(round(2**10*(amplitude/100.)))-1
-        if ASF<0: ASF = 0
         data = [self.__regACR, 0x00]
         data.extend([(ASF >> 8*1 & 0xff) + int('00010000',2), ASF >> 8*0 & 0xff])
         if self.demo:
@@ -139,6 +131,7 @@ class AD9959(QWeatherServer):
         data = [self.__regFR1, 0x80, 0x00, 0x20]
         self.spi.xfer2(data[:])
         self.IOupdate()
+        print('Chip was reset')
 
 
     def IOupdate(self):
@@ -166,15 +159,15 @@ if __name__ == "__main__":
     serverA.run()
     '''
     pA = Process(target=serverA.run())
-#    pB = Process(target=serverB.run())
+    pB = Process(target=serverB.run())
     pA.start()
-#    pB.start()
+    pB.start()
     try:
         while True:
             pass #'Run run run little servers'
     except KeyboardInterrupt:
         print('Shutting down servers')
         pA.terminate()
-#        pB.terminate()
+        pB.terminate()
         print('Servers shut down')
     '''

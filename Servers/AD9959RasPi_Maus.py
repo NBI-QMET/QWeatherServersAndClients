@@ -25,10 +25,8 @@ class AD9959(QWeatherServer):
 
     def __init__(self,dds):
         self.QWeatherStationIP = "tcp://10.90.61.231:5559"
-        if dds == 0:
-            self.servername = 'ACEDDSA'
-        elif dds == 1:
-            self.servername = 'ACEDDSB'
+        if dds == 1:
+            self.servername = 'mausDDS'
         self.verbose = False
         self.debug = False
         self.demo = False
@@ -156,9 +154,9 @@ class AD9959(QWeatherServer):
 if __name__ == "__main__":
     from multiprocessing import Process
 
-    #serverA = AD9959(0)
-    serverB = AD9959(1)
-    serverB.run()
+    serverA = AD9959(1)
+    #serverB = AD9959(1)
+    serverA.run()
     '''
     pA = Process(target=serverA.run())
     pB = Process(target=serverB.run())

@@ -3,7 +3,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-cnx = qweather.QWeatherClient("tcp://10.90.61.13:5559")
+cnx = qweather.QWeatherClient("tcp://10.90.61.231:5559")
 serv = cnx.StrontiumBrain
 print('connected')
 

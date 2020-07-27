@@ -99,7 +99,9 @@ class StrontiumBrain(QWeatherServer):
                             '(6) Red MOT':('Dev1/port0/line6',False)}
         self.channellistAI = {}#'AI0':'Dev1/ai0'}
 
-        self.channellistAO = {'AO1':'Dev1/ao1'}
+        #self.channellistAO = {'AO1':'Dev1/ao1'}
+        self.channellistAO = {'AO0':'Dev1/ao1',
+                              'AO1':'Dev1/ao0'}
 
 
     @QMethod
@@ -131,7 +133,7 @@ class StrontiumBrain(QWeatherServer):
 
 
     @QMethod
-    def armSequence(self,AOdata,user_Max_Time = None):
+    def armSequence(self,AOdata0,AOdata1,user_Max_Time = None):
         '''arms sequence'''
         if user_Max_Time is None:
             user_Max_Time = self.maxtime
@@ -211,10 +213,15 @@ class StrontiumBrain(QWeatherServer):
             writtenSampsAO = c_int()
             data = np.array([],dtype='double')
             for aname,achan in self.channelsAO.items():
-                if len(AOdata) > 0:
-                    achan.dataArray = np.array(AOdata,dtype='float64') # Get data from AO GUI
+                if AOdata0 is not None and "0" in aname:
+                    print("0")
+                    achan.dataArray = np.array(AOdata0,dtype='float64') # Get data from AO GUI
+                elif AOdata1 is not None and "1" in aname:
+                    print("1")
+                    achan.dataArray = np.array(AOdata1,dtype='float64') # Get data from AO GUI
                 data = np.append(data,achan.dataArray)
                 lenAO = len(achan.dataArray)
+                print(lenAO)
                 
             self.AOtask.WriteAnalogF64(lenAO, #Length of data to write
                                           False, #Autostart

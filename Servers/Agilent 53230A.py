@@ -27,7 +27,7 @@ class logging_thread(threading.Thread):
 class Server(QWeatherServer):
 
     def __init__(self):
-        self.QWeatherStationIP = "tcp://10.90.61.13:5559"
+        self.QWeatherStationIP = "tcp://10.90.61.231:5559"
         self.servername = 'FreqCounterAgilent'
         self.TCPIPaddr = 'TCPIP0::10.90.61.212::inst0::INSTR'
         self.verbose = False

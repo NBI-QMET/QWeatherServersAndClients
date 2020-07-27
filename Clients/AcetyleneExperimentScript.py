@@ -6,7 +6,7 @@ import os
 import sys
 import datetime
 
-cnx = qweather.QWeatherClient("tcp://172.24.22.3:5559")
+cnx = qweather.QWeatherClient("tcp://10.90.61.231:5559")
 
 with Popen(['python', "Z:/Dataprogrammer/Qweather/Servers/RSMultimeter.py", "RSMultimeter1", "TCPIP0::172.24.5.166::INSTR"]) as mm1process:
     time.sleep(5)
