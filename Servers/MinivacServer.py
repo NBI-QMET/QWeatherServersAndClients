@@ -5,6 +5,7 @@
 
 from qweather import QWeatherServer, QMethod
 #import numpy as np
+#The possibilities are endless
 import pyfirmata
 import time
 
