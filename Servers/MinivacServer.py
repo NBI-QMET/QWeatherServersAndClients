@@ -4,6 +4,7 @@
 '''Client (Qweather) to run two Gamma Vacuum pumps using a single Arduino microcontroller using firmata protocol'''
 
 from qweather import QWeatherServer, QMethod
+#import numpy as np
 import pyfirmata
 import time
 
